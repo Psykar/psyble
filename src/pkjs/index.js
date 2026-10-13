@@ -7,7 +7,7 @@ var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
 
 // Must match MAX_EVENTS and TITLE_LEN in src/c/state.h.
 var MAX_EVENTS = 8;
-var TITLE_BYTES = 23;
+var TITLE_BYTES = 39;
 var WINDOW_HOURS = 24;
 var CALENDARS = 3;
 var LOCATION_KEY = 'psyble-location';
@@ -31,7 +31,8 @@ function cleanTitle(s) {
 
 function encodeEvents(events) {
   return events.slice(0, MAX_EVENTS).map(function (e) {
-    return [Math.floor(e.start / 1000), Math.floor(e.end / 1000), e.color, cleanTitle(e.title)].join('\x1f');
+    return [Math.floor(e.start / 1000), Math.floor(e.end / 1000), e.color, e.tentative ? 1 : 0, cleanTitle(e.title)]
+      .join('\x1f');
   }).join('\x1e');
 }
 

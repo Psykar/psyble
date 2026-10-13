@@ -107,6 +107,7 @@ static void demo_state(void) {
     e->end = midnight + ev[i].e * 60;
     if (e->end <= s_state.now) continue;
     e->color = GColorFromHEX(ev[i].c).argb;
+    e->tentative = false;
     strncpy(e->title, ev[i].t, TITLE_LEN - 1);
     s_state.n_events++;
   }
@@ -144,27 +145,29 @@ static void bt_handler(bool connected) {
 
 // ---- phone messages --------------------------------------------------------------------------
 
-// Records are separated by 0x1E and fields by 0x1F: start, end (unix seconds), colour (0xRRGGBB), title.
+// Records are separated by 0x1E and fields by 0x1F: start, end (unix seconds), colour (0xRRGGBB),
+// tentative (0/1), title.
 static void parse_events(char *str) {
   s_state.n_events = 0;
   char *rec = str;
   while (rec && *rec && s_state.n_events < MAX_EVENTS) {
     char *rec_end = strchr(rec, '\x1e');
     if (rec_end) *rec_end = '\0';
-    char *f[4] = {rec, NULL, NULL, NULL};
-    for (int i = 1; i < 4 && f[i - 1]; i++) {
+    char *f[5] = {rec, NULL, NULL, NULL, NULL};
+    for (int i = 1; i < 5 && f[i - 1]; i++) {
       char *sep = strchr(f[i - 1], '\x1f');
       if (sep) {
         *sep = '\0';
         f[i] = sep + 1;
       }
     }
-    if (f[3]) {
+    if (f[4]) {
       Event *e = &s_state.events[s_state.n_events++];
       e->start = atoi(f[0]);
       e->end = atoi(f[1]);
       e->color = GColorFromHEX(atoi(f[2])).argb;
-      strncpy(e->title, f[3], TITLE_LEN - 1);
+      e->tentative = atoi(f[3]) != 0;
+      strncpy(e->title, f[4], TITLE_LEN - 1);
       e->title[TITLE_LEN - 1] = '\0';
     }
     rec = rec_end ? rec_end + 1 : NULL;

@@ -2,17 +2,18 @@
 #include <pebble.h>
 
 #define MAX_EVENTS 8
-#define TITLE_LEN 24
+#define TITLE_LEN 40  // 4 * sizeof(Event) must fit PERSIST_DATA_MAX_LENGTH (see main.c)
 #define SUN_UNKNOWN -1
 
 typedef enum { THEME_BLACK = 0, THEME_TEAL = 1 } Theme;
-typedef enum { COUNTDOWN_CARD = 0, COUNTDOWN_START = 1, COUNTDOWN_END = 2 } CountdownAt;
+typedef enum { COUNTDOWN_CARD = 0, COUNTDOWN_START = 1, COUNTDOWN_END = 2, COUNTDOWN_OFF = 3 } CountdownAt;
 
 typedef struct {
   int32_t start;  // unix seconds
   int32_t end;
   uint8_t color;  // GColor8 argb
   char title[TITLE_LEN];
+  bool tentative;  // not accepted: drawn as an outline
 } Event;
 
 // Persisted as one blob; append fields only, or bump SETTINGS_KEY.

@@ -106,22 +106,37 @@ static void fill_poly(GContext *ctx, GPoint *pts, int n, GColor c) {
   gpath_draw_outline(ctx, &path);
 }
 
-// Ring segment between two insets, from angle a to b (b > a, may exceed 360).
-static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, float b, GColor c) {
+// Arc of radius r px and thickness px round the screen centre, from angle a to b (may exceed 360).
+static void fill_arc(GContext *ctx, int r, int thick, float a, float b) {
+  GRect rect = GRect(iround(g.cx) - r, iround(g.cy) - r, 2 * r, 2 * r);
+  while (a < 0) { a += 360.f; b += 360.f; }
+  while (a >= 360.f) { a -= 360.f; b -= 360.f; }
+  if (b > 360.f) {
+    graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, thick, DEG_TO_TRIGANGLE(a), TRIG_MAX_ANGLE);
+    a = 0.f;
+    b -= 360.f;
+  }
+  graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, thick, DEG_TO_TRIGANGLE(a), DEG_TO_TRIGANGLE(b));
+}
+
+// Ring segment between two insets, from angle a to b (b > a, may exceed 360), filled or as a
+// 1px outline.
+static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, float b, GColor c, bool outline) {
   if (b <= a) return;
   if (g.round) {
     int r = iround((DESIGN_R - in_outer) * g.k);
-    GRect rect = GRect(iround(g.cx) - r, iround(g.cy) - r, 2 * r, 2 * r);
     int thick = FMAX(1, iround((in_inner - in_outer) * g.k));
     graphics_context_set_fill_color(ctx, c);
-    while (a < 0) { a += 360.f; b += 360.f; }
-    while (a >= 360.f) { a -= 360.f; b -= 360.f; }
-    if (b > 360.f) {
-      graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, thick, DEG_TO_TRIGANGLE(a), TRIG_MAX_ANGLE);
-      a = 0.f;
-      b -= 360.f;
+    if (!outline) {
+      fill_arc(ctx, r, thick, a, b);
+      return;
     }
-    graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, thick, DEG_TO_TRIGANGLE(a), DEG_TO_TRIGANGLE(b));
+    fill_arc(ctx, r, 1, a, b);
+    fill_arc(ctx, r - thick + 1, 1, a, b);
+    graphics_context_set_stroke_color(ctx, c);
+    graphics_context_set_stroke_width(ctx, 1);
+    graphics_draw_line(ctx, gp(polar(DESIGN_R - in_outer, a)), gp(polar(DESIGN_R - in_inner, a)));
+    graphics_draw_line(ctx, gp(polar(DESIGN_R - in_outer, b)), gp(polar(DESIGN_R - in_inner, b)));
     return;
   }
   int n = (int)((b - a) / 1.5f) + 1;
@@ -132,7 +147,14 @@ static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, fl
     s_poly[i] = gp(ring(in_outer, d));
     s_poly[2 * n + 1 - i] = gp(ring(in_inner, d));
   }
-  fill_poly(ctx, s_poly, 2 * (n + 1), c);
+  if (!outline) {
+    fill_poly(ctx, s_poly, 2 * (n + 1), c);
+    return;
+  }
+  GPath path = {.num_points = 2 * (n + 1), .points = s_poly, .rotation = 0, .offset = GPointZero};
+  graphics_context_set_stroke_color(ctx, c);
+  graphics_context_set_stroke_width(ctx, 1);
+  gpath_draw_outline(ctx, &path);
 }
 
 static void fill_disc_ring(GContext *ctx, Pt c, float r_outer, int thick, float a, float b, GColor col) {
@@ -175,6 +197,17 @@ static void xf_polyline(GContext *ctx, const Xf *t, const float *xy, int n, int 
   }
 }
 
+// Frame for a marker on the ring at `inset`: +y points out through the nearest screen edge (radially
+// on round screens) and -x runs clockwise. Squared to the edge on rectangular screens so markers keep
+// their shape near the corners, and snapped to a pixel so small shapes stay symmetric.
+static Xf edge_xf(float inset, float deg, float s) {
+  char side = 'b';
+  Pt p = ring(inset, deg);
+  if (!g.round) ring_dist(inset, deg, &side);
+  float rot = g.round ? deg - 180.f : side == 'b' ? 0 : side == 'l' ? 90 : side == 't' ? 180 : 270;
+  return (Xf){{iround(p.x), iround(p.y)}, s, rot};
+}
+
 // ---- text ------------------------------------------------------------------------------------
 
 // Draws `str` centred on cx with its baseline at `baseline_y`, `spacing` px between glyphs.
@@ -195,6 +228,38 @@ static void text_tracked(GContext *ctx, const char *str, const Font *f, GColor c
 static void text(GContext *ctx, const char *str, const Font *f, GColor c, float cx, float baseline_y,
                  int max_w) {
   text_tracked(ctx, str, f, c, cx, baseline_y, max_w, 0);
+}
+
+static int text_width(const char *str, const Font *f) {
+#ifdef PBL_COLOR
+  return aafont_width(f->aa, str, 0);
+#else
+  return graphics_text_layout_get_content_size(str, f->font, GRect(0, 0, 1000, 2 * f->em),
+                                               GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft).w;
+#endif
+}
+
+// Splits `str` into `line1` and the remainder `*rest` (NULL if it fits on one line): at the last
+// space that fits in max_w, else at the last whole UTF-8 character that does.
+static void wrap(const char *str, const Font *f, int max_w, char *line1, size_t size, const char **rest) {
+  strncpy(line1, str, size - 1);
+  line1[size - 1] = '\0';
+  *rest = NULL;
+  if (text_width(line1, f) <= max_w) return;
+  size_t fit_space = 0, fit_char = 0;
+  for (size_t i = 1; str[i - 1] && i < size; i++) {
+    if ((str[i] & 0xC0) == 0x80) continue;
+    line1[i] = '\0';
+    if (text_width(line1, f) > max_w) break;
+    fit_char = i;
+    if (str[i] == ' ') fit_space = i;
+    line1[i] = str[i];
+  }
+  size_t cut = fit_space ? fit_space : fit_char;
+  if (!cut) cut = 1;
+  line1[cut] = '\0';
+  *rest = str + cut + (str[cut] == ' ');
+  if (!**rest) *rest = NULL;
 }
 
 // ---- components ------------------------------------------------------------------------------
@@ -240,33 +305,18 @@ static void draw_sun(GContext *ctx, int minutes, bool rise) {
   if (minutes == SUN_UNKNOWN) return;
   float deg = (minutes % 720) / 2.f;
   GColor c = rise ? C_SUNRISE : C_SUNSET;
-  float rot, r, chev_s;
-  Pt edge, chev;
-  if (g.round) {
-    rot = deg - 180.f;
-    edge = ring(0, deg);
-    chev = ring(15, deg);
-    r = 4.f * g.k;
-    chev_s = 0.89f * g.k;
-  } else {
-    char side;
-    float t = ring_dist(0, deg, &side);
-    edge = (Pt){g.cx + t * fsin(deg), g.cy - t * fcos(deg)};
-    chev = ring(10.5f, deg);
-    rot = side == 'b' ? 0 : side == 'l' ? 90 : side == 't' ? 180 : 270;
-    r = 3.5f * g.k;
-    chev_s = 0.6f * g.k;
-  }
-  int ri = FMAX(2, iround(r));
+  Xf t = edge_xf(PBL_IF_ROUND_ELSE(15, 10.5f), deg, PBL_IF_ROUND_ELSE(0.89f, 0.6f) * g.k);
+  float rot = t.rot;
+  Pt edge = ring(0, deg);
+  int ri = FMAX(2, iround(PBL_IF_ROUND_ELSE(4.f, 3.5f) * g.k));
   GRect rect = GRect(iround(edge.x) - ri, iround(edge.y) - ri, 2 * ri, 2 * ri);
   graphics_context_set_fill_color(ctx, c);
   float a0 = rot - 90.f;
   while (a0 < 0) a0 += 360.f;
   graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, ri, DEG_TO_TRIGANGLE(a0), DEG_TO_TRIGANGLE(a0 + 180.f));
-  Xf t = {chev, chev_s, rot};
   float up[] = {-3, 1.6f, 0, -1.6f, 3, 1.6f};
   float down[] = {-3, -1.6f, 0, 1.6f, 3, -1.6f};
-  xf_polyline(ctx, &t, rise ? up : down, 3, FMAX(1, iround(1.6f * chev_s)), c);
+  xf_polyline(ctx, &t, rise ? up : down, 3, FMAX(1, iround(1.6f * t.s)), c);
 }
 
 // Tapered hand running through the centre into a short tail.
@@ -330,7 +380,8 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
     float s0 = FMAX(es, now), e0 = FMIN(ee, now + 12.f);
     if (e0 > s0) {
       float a = s0 * 30.f, b = FMAX(a + 1.f, e0 * 30.f - 1.f);
-      fill_band(ctx, PBL_IF_ROUND_ELSE(1, -1), PBL_IF_ROUND_ELSE(11, 6), a, b, (GColor){.argb = e->color});
+      fill_band(ctx, PBL_IF_ROUND_ELSE(1, -1), PBL_IF_ROUND_ELSE(11, 6), a, b, (GColor){.argb = e->color},
+                e->tentative);
     }
     if (!next && es >= now && es < now + 12.f) {
       next = e;
@@ -343,7 +394,8 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   bool sweep = next && a_next - a_now > 5.f;
   if (sweep) {
     float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f);
-    fill_band(ctx, PBL_IF_ROUND_ELSE(4.5f, 7.3f), PBL_IF_ROUND_ELSE(7.f, 9.f), a_now + lead, a_next - 0.5f, C_GREY);
+    fill_band(ctx, PBL_IF_ROUND_ELSE(4.5f, 7.3f), PBL_IF_ROUND_ELSE(7.f, 9.f), a_now + lead, a_next - 0.5f, C_GREY,
+              false);
   }
 
   ticks(ctx, PBL_IF_ROUND_ELSE(8, 3.5f), PBL_IF_ROUND_ELSE(1, -1), 1, th.min_tick, is_minute);
@@ -351,10 +403,10 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   ticks(ctx, PBL_IF_ROUND_ELSE(27, 14), PBL_IF_ROUND_ELSE(1, -1), px(PBL_IF_ROUND_ELSE(4.5f, 3.5f)), th.tick, is_quarter);
 
   if (sweep) {
-    float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f);
-    Pt c1 = ring(PBL_IF_ROUND_ELSE(10.5f, 10.1f), a_now);
-    Pt c2 = ring(PBL_IF_ROUND_ELSE(5.75f, 8.15f), a_now + lead);
-    Pt c3 = ring(PBL_IF_ROUND_ELSE(1.f, 6.2f), a_now);
+    // Tip where the sweep starts; the arms reach back anticlockwise along the edge.
+    float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f), back = PBL_IF_ROUND_ELSE(7.5f, 3.f), arm = PBL_IF_ROUND_ELSE(4.75f, 2.f);
+    Xf t = edge_xf(PBL_IF_ROUND_ELSE(5.75f, 8.15f), a_now + lead, g.k);
+    Pt c1 = xf(&t, back, -arm), c2 = xf(&t, 0, 0), c3 = xf(&t, back, arm);
     int wo = px(PBL_IF_ROUND_ELSE(4.5f, 3.6f)), wi = px(PBL_IF_ROUND_ELSE(2.5f, 2.f));
     line(ctx, c1, c2, wo, th.dial);
     line(ctx, c2, c3, wo, th.dial);
@@ -364,11 +416,10 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
 
   GColor next_c = next ? (GColor){.argb = next->color} : C_GREY;
   if (next) {
-    float spread = PBL_IF_ROUND_ELSE(4.f, 3.f);
-    // Kept ~2px inside the event band so it doesn't merge with the band of the same colour.
-    GPoint tri[3] = {gp(ring(PBL_IF_ROUND_ELSE(14, 8), a_next)),
-                     gp(ring(PBL_IF_ROUND_ELSE(23, 14), a_next - spread)),
-                     gp(ring(PBL_IF_ROUND_ELSE(23, 14), a_next + spread))};
+    // Tip kept ~2px inside the event band so it doesn't merge with the band of the same colour.
+    float half = PBL_IF_ROUND_ELSE(8.f, 3.5f), depth = PBL_IF_ROUND_ELSE(9.f, 6.f);
+    Xf t = edge_xf(PBL_IF_ROUND_ELSE(14, 8), a_next, g.k);
+    GPoint tri[3] = {gp(xf(&t, 0, 0)), gp(xf(&t, -half, -depth)), gp(xf(&t, half, -depth))};
     fill_poly(ctx, tri, 3, next_c);
     GPath path = {.num_points = 3, .points = tri};
     graphics_context_set_stroke_color(ctx, th.dial);
@@ -425,8 +476,17 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
 
     Pt c = slot(68, second_a);
     bool in_card = st->countdown_at == COUNTDOWN_CARD;
+    int max_w = PBL_IF_ROUND_ELSE(iround(90 * g.k), iround(64 * g.kx));
+    // Without the countdown line the title may wrap onto a second line.
+    char title1[TITLE_LEN];
+    const char *title2 = NULL;
+    if (in_card) {
+      strncpy(title1, next->title, TITLE_LEN);
+    } else {
+      wrap(next->title, &s_label, max_w, title1, sizeof(title1), &title2);
+    }
     float bar_h = 3.f, bar_gap = PBL_IF_ROUND_ELSE(3.f, 2.f), gap = 1.f;
-    float h = bar_h + bar_gap + s_time.em + (in_card ? gap + s_label.em : 0) + gap + s_label.em;
+    float h = bar_h + bar_gap + s_time.em + (in_card || title2 ? gap + s_label.em : 0) + gap + s_label.em;
     float y = c.y - h / 2.f;
     int bar_w = PBL_IF_ROUND_ELSE(iround(41 * g.k), iround(24 * g.k));
     graphics_context_set_fill_color(ctx, next_c);
@@ -434,16 +494,19 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
     y += bar_h + bar_gap;
     text(ctx, when, &s_time, GColorWhite, c.x, y + BASELINE_EM * s_time.em, 80);
     y += s_time.em;
-    int max_w = PBL_IF_ROUND_ELSE(iround(90 * g.k), iround(64 * g.kx));
     if (in_card) {
       y += gap;
       text(ctx, in_buf, &s_label, C_GREY, c.x, y + BASELINE_EM * s_label.em, max_w);
       y += s_label.em;
     }
     y += gap;
-    text(ctx, next->title, &s_label, C_GREY, c.x, y + BASELINE_EM * s_label.em, max_w);
+    text(ctx, title1, &s_label, C_GREY, c.x, y + BASELINE_EM * s_label.em, max_w);
+    if (title2) {
+      y += s_label.em + gap;
+      text(ctx, title2, &s_label, C_GREY, c.x, y + BASELINE_EM * s_label.em, max_w);
+    }
 
-    if (!in_card) {
+    if (st->countdown_at == COUNTDOWN_START || st->countdown_at == COUNTDOWN_END) {
       bool at_end = st->countdown_at == COUNTDOWN_END;
       float deg = at_end ? a_next - 11.f : a_now + 9.f;
       Pt p = g.round ? polar(at_end ? 101 : 104, deg) : ring(24, deg);

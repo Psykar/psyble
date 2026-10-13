@@ -43,8 +43,9 @@ module.exports = [
         defaultValue: '0',
         options: [
           { label: 'On the event card', value: '0' },
-          { label: 'At the start of the line', value: '1' },
-          { label: 'At the end of the line', value: '2' }
+          { label: 'Next to the event', value: '2' },
+          { label: 'Next to the chevron', value: '1' },
+          { label: 'Off', value: '3' }
         ]
       },
       {

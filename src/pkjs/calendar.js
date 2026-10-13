@@ -18,10 +18,49 @@ function isCancelled(component) {
   return String(component.getFirstPropertyValue('status') || '').toUpperCase() === 'CANCELLED';
 }
 
+// The calendar owner's reply to an event. Events they aren't invited to (their own) count as
+// accepted, as does everything when the owner is unknown.
+function partstat(component, owner) {
+  if (!owner) return 'ACCEPTED';
+  var me = component.getAllProperties('attendee').filter(function (p) {
+    return String(p.getFirstValue()).toLowerCase() === 'mailto:' + owner;
+  })[0];
+  return me ? String(me.getParameter('partstat') || 'NEEDS-ACTION').toUpperCase() : 'ACCEPTED';
+}
+
+// Google's address embeds the calendar ID, which is the owner's email for their own calendar:
+// https://calendar.google.com/calendar/ical/<id>/private-…/basic.ics
+function calendarOwner(url) {
+  var m = /\/calendar\/ical\/([^\/]+)\//.exec(url);
+  return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+}
+
+// Google's feeds carry the whole calendar history (~25 MB, ~10k events), too slow for ical.js to
+// parse and expand on the phone. A text scan drops what can't reach `from`: one-off events that
+// ended, series whose UNTIL passed, and exceptions that both replaced and moved to a past slot.
+// Dates are compared as YYYYMMDD with a 2-day margin so TZID offsets never drop a live event.
+// Anything without a parseable date (DURATION, COUNT, RDATE) is kept.
+function dropPastEvents(icsText, from) {
+  var cutoff = new Date(from.getTime() - 2 * 86400000).toISOString().slice(0, 10).replace(/-/g, '');
+  function past(re, block) {
+    var m = re.exec(block);
+    return !!m && m[1] < cutoff;
+  }
+  return icsText.replace(/\r?\n[ \t]/g, '').replace(/BEGIN:VEVENT[\s\S]*?END:VEVENT\r?\n?/g, function (block) {
+    if (/^RDATE[;:]/m.test(block)) return block;
+    var gone = /^RRULE[;:]/m.test(block)
+      ? past(/^RRULE[;:].*UNTIL=(\d{8})/m, block)
+      : past(/^DTEND[^:\r\n]*:(\d{8})/m, block) &&
+        (!/^RECURRENCE-ID[;:]/m.test(block) || past(/^RECURRENCE-ID[^:\r\n]*:(\d{8})/m, block));
+    return gone ? '' : block;
+  });
+}
+
 // Timed events overlapping [from, to) from one iCalendar document. All-day events are skipped:
-// on a 12-hour ring they would shade everything.
-function parseEvents(icsText, color, from, to) {
-  var root = new ICAL.Component(ICAL.parse(icsText));
+// on a 12-hour ring they would shade everything. Events `owner` declined are skipped; ones they
+// haven't accepted are marked tentative.
+function parseEvents(icsText, color, from, to, owner) {
+  var root = new ICAL.Component(ICAL.parse(dropPastEvents(icsText, from)));
   root.getAllSubcomponents('vtimezone').forEach(function (tz) {
     ICAL.TimezoneService.register(tz);
   });
@@ -40,14 +79,17 @@ function parseEvents(icsText, color, from, to) {
   var out = [];
   function add(start, end, item) {
     if (item.startDate.isDate || isCancelled(item.component)) return;
+    var reply = partstat(item.component, owner);
+    if (reply === 'DECLINED') return;
     if (end > from && start < to) {
-      out.push({ start: start, end: end, color: color, title: item.summary || '' });
+      out.push({ start: start, end: end, color: color, title: item.summary || '', tentative: reply !== 'ACCEPTED' });
     }
   }
 
   masters.forEach(function (v) {
-    var ev = new ICAL.Event(v);
-    (exceptions[ev.uid] || []).forEach(function (x) { ev.relateException(x); });
+    // Without `exceptions`, ical.js relates every exception in the calendar to this event, matched
+    // by local time alone, so another series' moved meeting replaces this one's occurrence.
+    var ev = new ICAL.Event(v, { exceptions: exceptions[v.getFirstPropertyValue('uid')] || [] });
     if (!ev.isRecurring()) {
       add(ev.startDate.toJSDate(), ev.endDate.toJSDate(), ev);
       return;
@@ -75,7 +117,7 @@ function loadEvents(calendars, from, to, callback) {
         console.log('calendar fetch failed: ' + err.message);
       } else {
         try {
-          all = all.concat(parseEvents(text, cal.color, from, to));
+          all = all.concat(parseEvents(text, cal.color, from, to, calendarOwner(cal.url)));
         } catch (e) {
           console.log('calendar parse failed: ' + e);
         }
@@ -88,4 +130,4 @@ function loadEvents(calendars, from, to, callback) {
   });
 }
 
-module.exports = { loadEvents: loadEvents, parseEvents: parseEvents };
+module.exports = { loadEvents: loadEvents, parseEvents: parseEvents, dropPastEvents: dropPastEvents };
