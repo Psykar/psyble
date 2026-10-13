@@ -1,0 +1,173 @@
+{
+  "name": "psyble",
+  "author": "Louis des Landes",
+  "version": "0.1.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {
+    "ical.js": "1.5.0",
+    "@rebble/clay": "1.1.0"
+  },
+  "pebble": {
+    "displayName": "Psyble",
+    "uuid": "4f3d6a52-8b1e-4c7a-9d2f-6e5b1a0c9f37",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery",
+      "flint",
+      "gabbro"
+    ],
+    "capabilities": [
+      "location",
+      "configurable"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "EVENTS",
+      "SUNRISE",
+      "SUNSET",
+      "THEME",
+      "ACCENT",
+      "COUNTDOWN_AT",
+      "HAND_REACH",
+      "REQUEST",
+      "CAL_URL[3]",
+      "CAL_COLOR[3]"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "font",
+          "name": "FONT_LABEL_12",
+          "file": "fonts/BarlowSemiCondensed-Bold.ttf",
+          "characterRegex": "[ -~¡-ÿ]",
+          "targetPlatforms": [
+            "diorite",
+            "flint"
+          ]
+        },
+        {
+          "type": "font",
+          "name": "FONT_NUM_12",
+          "file": "fonts/BarlowCondensed-Bold.ttf",
+          "characterRegex": "[0-9hm%]",
+          "targetPlatforms": [
+            "diorite",
+            "flint"
+          ]
+        },
+        {
+          "type": "font",
+          "name": "FONT_TIME_17",
+          "file": "fonts/BarlowCondensed-Bold.ttf",
+          "characterRegex": "[0-9:]",
+          "targetPlatforms": [
+            "diorite",
+            "flint"
+          ]
+        },
+        {
+          "type": "font",
+          "name": "FONT_DAY_21",
+          "file": "fonts/BarlowCondensed-Bold.ttf",
+          "characterRegex": "[0-9]",
+          "targetPlatforms": [
+            "diorite",
+            "flint"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_LABEL_12",
+          "file": "aafonts/LABEL_12.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_LABEL_13",
+          "file": "aafonts/LABEL_13.bin",
+          "targetPlatforms": [
+            "emery",
+            "gabbro"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_NUM_12",
+          "file": "aafonts/NUM_12.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk",
+            "emery",
+            "gabbro"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_WEEKDAY_14",
+          "file": "aafonts/WEEKDAY_14.bin",
+          "targetPlatforms": [
+            "emery",
+            "gabbro"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_NUM_14",
+          "file": "aafonts/NUM_14.bin",
+          "targetPlatforms": [
+            "emery",
+            "gabbro"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_TIME_17",
+          "file": "aafonts/TIME_17.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_DAY_21",
+          "file": "aafonts/DAY_21.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_TIME_22",
+          "file": "aafonts/TIME_22.bin",
+          "targetPlatforms": [
+            "emery",
+            "gabbro"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "AA_DAY_28",
+          "file": "aafonts/DAY_28.bin",
+          "targetPlatforms": [
+            "emery",
+            "gabbro"
+          ]
+        }
+      ]
+    }
+  }
+}
