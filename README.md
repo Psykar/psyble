@@ -26,7 +26,8 @@ Where the mock-up's open questions needed an answer for the build:
 - Time Steel hands are fixed-length by default; stretched hands are a setting.
 - Text on Time Steel is larger than frame H, which is drawn at 3× and would be 6–7 px on the
   watch. Every label is at least 12 px.
-- The dial defaults to teal with pale yellow marks (frame G); black is a setting.
+- The dial is any colour, defaulting to dark blue with pale yellow marks; frame G's teal and black are
+  among the choices.
 - Small labels use Barlow Semi Condensed, which holds up better than Barlow Condensed at
   12–13 px. Numbers stay Barlow Condensed Bold.
 

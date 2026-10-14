@@ -58,11 +58,12 @@ static void load_settings(void) {
       .hand_stretch = false,
       .refresh_minutes = 30,
       .shake_seconds = 30,
-      .dial = GColorFromHEX(0x005555).argb,
+      .dial = GColorFromHEX(0x0000AA).argb,
   };
   int n = persist_exists(SETTINGS_KEY) ? persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings)) : 0;
-  if (n > 0 && n <= (int)offsetof(Settings, dial) && s_state.settings.theme == THEME_BLACK) {
-    s_state.settings.dial = GColorBlack.argb;
+  // Settings saved before `dial` existed keep their teal or black theme.
+  if (n > 0 && n <= (int)offsetof(Settings, dial)) {
+    s_state.settings.dial = s_state.settings.theme == THEME_BLACK ? GColorBlack.argb : GColorFromHEX(0x005555).argb;
   }
 
   int16_t sun[2] = {SUN_UNKNOWN, SUN_UNKNOWN};
