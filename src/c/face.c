@@ -10,9 +10,10 @@
 #define FMAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define DESIGN_R 130.f
-// Insets of the line from now to the next event.
-#define SWEEP_OUTER PBL_IF_ROUND_ELSE(4.75f, 7.65f)
-#define SWEEP_INNER PBL_IF_ROUND_ELSE(6.75f, 8.65f)
+// Insets of the line from now to the next event: centred in the visible part of the event bands,
+// so the line feeds into the middle of the next one.
+#define SWEEP_OUTER PBL_IF_ROUND_ELSE(4.75f, 2.5f)
+#define SWEEP_INNER PBL_IF_ROUND_ELSE(6.75f, 3.5f)
 // Barlow Condensed: cap height 0.70em; with CSS line-height 1 the baseline sits 0.90em below the box top.
 #define CAP_EM 0.70f
 #define BASELINE_EM 0.90f
@@ -396,7 +397,6 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   bool sweep = next && a_next - a_now > 5.f;
   if (sweep) {
     float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f);
-    // Runs into the next-event triangle, whose tip sits on this line on rectangular screens.
     fill_band(ctx, SWEEP_OUTER, SWEEP_INNER, a_now + lead, a_next, C_GREY, 0);
   }
 
@@ -418,7 +418,7 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   if (sweep) {
     // Tip where the sweep starts; the arms reach back anticlockwise along the edge.
     float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f), back = PBL_IF_ROUND_ELSE(7.5f, 4.f), arm = PBL_IF_ROUND_ELSE(4.75f, 3.f);
-    Xf t = edge_xf(PBL_IF_ROUND_ELSE(5.75f, 8.15f), a_now + lead, g.k);
+    Xf t = edge_xf((SWEEP_OUTER + SWEEP_INNER) / 2.f, a_now + lead, g.k);
     Pt c1 = xf(&t, back, -arm), c2 = xf(&t, 0, 0), c3 = xf(&t, back, arm);
     // As wide as the line, which fill_poly's smoothing outline widens by 1px on rectangular screens.
     int wi = px(SWEEP_INNER - SWEEP_OUTER) + PBL_IF_ROUND_ELSE(0, 1), wo = wi + 2;
