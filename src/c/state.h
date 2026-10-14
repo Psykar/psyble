@@ -26,6 +26,7 @@ typedef struct {
   uint8_t shake_seconds;    // how long a shake shows the second hand; 0 = never
   uint8_t dial;             // GColor8 argb
   uint8_t tick;             // major ticks, GColor8 argb; 0 (never a real colour) = derive from dial
+  bool bt_vibe;             // buzz when the phone disconnects (not in Quiet Time)
 } Settings;
 
 typedef struct {

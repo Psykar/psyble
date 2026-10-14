@@ -77,6 +77,13 @@ module.exports = [
       },
       {
         type: 'toggle',
+        messageKey: 'BT_VIBE',
+        label: 'Buzz when the phone disconnects',
+        description: 'Not during Quiet Time.',
+        defaultValue: false
+      },
+      {
+        type: 'toggle',
         messageKey: 'HAND_REACH',
         label: 'Stretch hands to the screen edge',
         defaultValue: false,

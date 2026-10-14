@@ -173,6 +173,9 @@ static void battery_handler(BatteryChargeState charge) {
 }
 
 static void bt_handler(bool connected) {
+  if (s_state.bt_connected && !connected && s_state.settings.bt_vibe && !quiet_time_is_active()) {
+    vibes_double_pulse();
+  }
   s_state.bt_connected = connected;
 #ifdef PSYBLE_DEMO
   s_state.bt_connected = false;
@@ -252,6 +255,10 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_HAND_REACH))) {
     s_state.settings.hand_stretch = t->value->int32 != 0;
+    settings_changed = true;
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_BT_VIBE))) {
+    s_state.settings.bt_vibe = t->value->int32 != 0;
     settings_changed = true;
   }
   if ((t = dict_find(it, MESSAGE_KEY_SHAKE_SECONDS))) {
