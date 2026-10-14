@@ -119,26 +119,29 @@ static void fill_arc(GContext *ctx, int r, int thick, float a, float b) {
   graphics_fill_radial(ctx, rect, GOvalScaleModeFitCircle, thick, DEG_TO_TRIGANGLE(a), DEG_TO_TRIGANGLE(b));
 }
 
-// Ring segment between two insets, from angle a to b (b > a, may exceed 360), filled or as a
-// 1px outline.
-static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, float b, GColor c, bool outline) {
+// Ring segment between two insets, from angle a to b (b > a, may exceed 360): filled when
+// outline_w is 0, else outlined with strokes outline_w px wide, kept inside the segment.
+static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, float b, GColor c, int outline_w) {
   if (b <= a) return;
   if (g.round) {
     int r = iround((DESIGN_R - in_outer) * g.k);
     int thick = FMAX(1, iround((in_inner - in_outer) * g.k));
     graphics_context_set_fill_color(ctx, c);
-    if (!outline) {
+    if (!outline_w) {
       fill_arc(ctx, r, thick, a, b);
       return;
     }
-    fill_arc(ctx, r, 1, a, b);
-    fill_arc(ctx, r - thick + 1, 1, a, b);
+    fill_arc(ctx, r, outline_w, a, b);
+    fill_arc(ctx, r - thick + outline_w, outline_w, a, b);
     graphics_context_set_stroke_color(ctx, c);
-    graphics_context_set_stroke_width(ctx, 1);
+    graphics_context_set_stroke_width(ctx, outline_w);
     graphics_draw_line(ctx, gp(polar(DESIGN_R - in_outer, a)), gp(polar(DESIGN_R - in_inner, a)));
     graphics_draw_line(ctx, gp(polar(DESIGN_R - in_outer, b)), gp(polar(DESIGN_R - in_inner, b)));
     return;
   }
+  float half = outline_w / 2.f / g.k;
+  in_outer += half;
+  in_inner -= half;
   int n = (int)((b - a) / 1.5f) + 1;
   if (n < 2) n = 2;
   if (n > BAND_MAX_STEPS) n = BAND_MAX_STEPS;
@@ -147,14 +150,14 @@ static void fill_band(GContext *ctx, float in_outer, float in_inner, float a, fl
     s_poly[i] = gp(ring(in_outer, d));
     s_poly[2 * n + 1 - i] = gp(ring(in_inner, d));
   }
-  if (!outline) {
-    fill_poly(ctx, s_poly, 2 * (n + 1), c);
+  int m = 2 * (n + 1);
+  if (!outline_w) {
+    fill_poly(ctx, s_poly, m, c);
     return;
   }
-  GPath path = {.num_points = 2 * (n + 1), .points = s_poly, .rotation = 0, .offset = GPointZero};
   graphics_context_set_stroke_color(ctx, c);
-  graphics_context_set_stroke_width(ctx, 1);
-  gpath_draw_outline(ctx, &path);
+  graphics_context_set_stroke_width(ctx, outline_w);
+  for (int i = 0; i < m; i++) graphics_draw_line(ctx, s_poly[i], s_poly[(i + 1) % m]);
 }
 
 static void fill_disc_ring(GContext *ctx, Pt c, float r_outer, int thick, float a, float b, GColor col) {
@@ -381,7 +384,7 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
     if (e0 > s0) {
       float a = s0 * 30.f, b = FMAX(a + 1.f, e0 * 30.f - 1.f);
       fill_band(ctx, PBL_IF_ROUND_ELSE(1, -1), PBL_IF_ROUND_ELSE(11, 6), a, b, (GColor){.argb = e->color},
-                e->tentative);
+                e->tentative ? px(PBL_IF_ROUND_ELSE(2.5f, 1.7f)) : 0);
     }
     if (!next && es >= now && es < now + 12.f) {
       next = e;
@@ -394,8 +397,8 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   bool sweep = next && a_next - a_now > 5.f;
   if (sweep) {
     float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f);
-    fill_band(ctx, PBL_IF_ROUND_ELSE(4.5f, 7.3f), PBL_IF_ROUND_ELSE(7.f, 9.f), a_now + lead, a_next - 0.5f, C_GREY,
-              false);
+    // Runs into the next-event triangle, whose tip sits on this line on rectangular screens.
+    fill_band(ctx, PBL_IF_ROUND_ELSE(5.25f, 7.65f), PBL_IF_ROUND_ELSE(6.25f, 8.65f), a_now + lead, a_next, C_GREY, 0);
   }
 
   ticks(ctx, PBL_IF_ROUND_ELSE(8, 3.5f), PBL_IF_ROUND_ELSE(1, -1), 1, th.min_tick, is_minute);
@@ -421,9 +424,6 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
     Xf t = edge_xf(PBL_IF_ROUND_ELSE(14, 8), a_next, g.k);
     GPoint tri[3] = {gp(xf(&t, 0, 0)), gp(xf(&t, -half, -depth)), gp(xf(&t, half, -depth))};
     fill_poly(ctx, tri, 3, next_c);
-    GPath path = {.num_points = 3, .points = tri};
-    graphics_context_set_stroke_color(ctx, th.dial);
-    gpath_draw_outline(ctx, &path);
   }
 
   // Battery ring under the hands: green, amber at 30%, red at 15%.
