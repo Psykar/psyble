@@ -328,8 +328,8 @@ static void draw_sun(GContext *ctx, int minutes, bool rise) {
 // Tapered hand running through the centre into a short tail.
 static void hand_poly(GPoint out[7], float ang, float tail, float len, float wb, float wt, float dx, float dy) {
   float cs = fcos(ang), sn = fsin(ang), k = g.k;
-  const float rw[7][2] = {{-tail, -wb * 0.35f}, {0, -wb / 2}, {len, -wt / 2}, {len + wt * 0.6f, 0},
-                          {len, wt / 2},        {0, wb / 2},  {-tail, wb * 0.35f}};
+  const float rw[7][2] = {{-tail, -wb * 0.15f}, {0, -wb / 2}, {len, -wt / 2}, {len + wt * 0.6f, 0},
+                          {len, wt / 2},        {0, wb / 2},  {-tail, wb * 0.15f}};
   for (int i = 0; i < 7; i++) {
     float r = rw[i][0] * k, w = rw[i][1] * k;
     out[i] = gp((Pt){g.cx + dx * k + r * sn + w * cs, g.cy + dy * k - r * cs + w * sn});
