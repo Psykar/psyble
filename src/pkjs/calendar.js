@@ -3,8 +3,9 @@ var ICAL = require('ical.js');
 // Daily events that started years ago need one iteration per day to reach today.
 var MAX_ITERATIONS = 20000;
 
-// Google takes ~16 s to start sending a large private feed, longer than some phone apps' default
-// request timeout. Failures report how long they ran, so a fixed limit shows up on the watch.
+// A full (unwindowed) feed of a busy calendar can take ~16 s before the first byte, longer than
+// some phone apps' default request timeout. Failures report how long they ran, so a fixed limit
+// shows up on the watch.
 var TIMEOUT_MS = 120000;
 
 function fetchText(url, callback) {
@@ -17,7 +18,7 @@ function fetchText(url, callback) {
   };
   xhr.onerror = function () { fail('network error'); };
   xhr.ontimeout = function () { fail('timed out'); };
-  xhr.open('GET', url.replace(/^webcal:\/\//i, 'https://'));
+  xhr.open('GET', url);
   xhr.timeout = TIMEOUT_MS;
   xhr.send();
 }
@@ -43,9 +44,21 @@ function calendarOwner(url) {
   return m ? decodeURIComponent(m[1]).toLowerCase() : null;
 }
 
-// Google's feeds carry the whole calendar history (~25 MB, ~10k events), too slow for ical.js to
-// parse and expand on the phone. A text scan drops what can't reach `from`: one-off events that
-// ended, series whose UNTIL passed, and exceptions that both replaced and moved to a past slot.
+// Google's iCal feeds still honour the old GData start-min/start-max parameters (undocumented):
+// a busy calendar drops from ~25 MB / ~15 s to ~15 KB / <1 s, keeping recurring series that have
+// an occurrence in the window. If Google stops honouring them the full feed still parses.
+// (singleevents=true is also accepted but drops recurring series, so isn't used.)
+function feedUrl(url, from, to) {
+  url = url.replace(/^webcal:\/\//i, 'https://');
+  if (!calendarOwner(url) || !/^https:\/\/calendar\.google\.com\//i.test(url)) return url;
+  function iso(d) { return d.toISOString().replace(/\.\d+Z$/, 'Z'); }
+  return url + (url.indexOf('?') < 0 ? '?' : '&') + 'start-min=' + iso(from) + '&start-max=' + iso(to);
+}
+
+// Full feeds carry the whole calendar history (a busy Google calendar: ~25 MB, ~10k events), too
+// slow for ical.js to parse and expand on the phone. A text scan drops what can't reach `from`:
+// one-off events that ended, series whose UNTIL passed, and exceptions that both replaced and moved
+// to a past slot.
 // Dates are compared as YYYYMMDD with a 2-day margin so TZID offsets never drop a live event.
 // Anything without a parseable date (DURATION, COUNT, RDATE) is kept.
 function dropPastEvents(icsText, from) {
@@ -123,12 +136,13 @@ function loadEvents(calendars, from, to, callback, progress) {
   if (!pending) return callback(all, errors);
   calendars.forEach(function (cal, i) {
     var name = 'Calendar ' + (i + 1) + ': ';
-    fetchText(cal.url, function (err, text) {
+    fetchText(feedUrl(cal.url, from, to), function (err, text) {
       if (err) {
         console.log('calendar fetch failed: ' + err.message);
         errors.push(name + err.message);
       } else {
-        if (progress) progress(name + (text.length / 1e6).toFixed(1) + ' MB');
+        var n = text.length;
+        if (progress) progress(name + (n < 1e6 ? Math.ceil(n / 1e3) + ' KB' : (n / 1e6).toFixed(1) + ' MB'));
         try {
           all = all.concat(parseEvents(text, cal.color, from, to, calendarOwner(cal.url)));
         } catch (e) {
@@ -144,4 +158,4 @@ function loadEvents(calendars, from, to, callback, progress) {
   });
 }
 
-module.exports = { loadEvents: loadEvents, parseEvents: parseEvents, dropPastEvents: dropPastEvents };
+module.exports = { loadEvents: loadEvents, parseEvents: parseEvents, dropPastEvents: dropPastEvents, feedUrl: feedUrl };

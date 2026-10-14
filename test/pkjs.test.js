@@ -105,6 +105,16 @@ test('hides declined events and marks unaccepted ones tentative', function () {
   assert.deepStrictEqual(got(null), ['accepted', 'declined', 'maybe', 'mine', 'pending']);
 });
 
+test('limits Google feeds to the window', function () {
+  var from = new Date('2026-10-15T01:02:03.456Z'), to = new Date('2026-10-16T01:02:03.456Z');
+  var g = 'https://calendar.google.com/calendar/ical/me%40example.com/private-abc/basic.ics';
+  assert.strictEqual(calendar.feedUrl(g, from, to),
+    g + '?start-min=2026-10-15T01:02:03Z&start-max=2026-10-16T01:02:03Z');
+  assert.strictEqual(calendar.feedUrl('webcal://calendar.google.com/calendar/ical/me%40example.com/private-abc/basic.ics', from, to),
+    g + '?start-min=2026-10-15T01:02:03Z&start-max=2026-10-16T01:02:03Z');
+  assert.strictEqual(calendar.feedUrl('https://example.com/cal.ics', from, to), 'https://example.com/cal.ics');
+});
+
 test('sunrise and sunset in Adelaide', function () {
   var t = sun.sunTimes(new Date('2026-10-14T02:30:00Z'), -34.93, 138.6);
   // Expected ~06:39 and ~19:32 ACDT (UTC+10:30), within 5 minutes

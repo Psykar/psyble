@@ -94,7 +94,7 @@ module.exports = [
       type: 'select',
       messageKey: 'REFRESH_MINUTES',
       label: 'Check calendars',
-      description: 'Each check downloads every calendar in full; a busy Google calendar can be several MB.',
+      description: 'Google calendars download only the next day; other calendars download in full each check.',
       defaultValue: '30',
       options: [
         { label: 'Every 15 minutes', value: '15' },

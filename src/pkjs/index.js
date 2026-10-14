@@ -15,7 +15,7 @@ var LAST_FETCH_KEY = 'psyble-last-fetch';
 var WATCH_HASH_KEY = 'psyble-watch-hash';  // DATA_HASH of what the watch last stored
 var STATUS_KEY = 'psyble-status';  // STATUS the watch last stored
 var STATUS_BYTES = 31;  // Must match State.status in src/c/state.h
-// 'ready' fires every time the face opens; each fetch of a Google feed is ~3 MB of phone data.
+// 'ready' fires every time the face opens; a non-Google calendar is downloaded in full each fetch.
 var READY_MIN_GAP_MS = 10 * 60 * 1000;
 
 function settings() {
