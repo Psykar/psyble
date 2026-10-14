@@ -5,6 +5,18 @@ module.exports = function () {
 
   // Preview of the face, redrawn as settings change. A cut-down copy of src/c/face.c: same design
   // units and geometry for the dial, ticks, sample events, line and hands; no battery, sun or card.
+  // Screen appearance of each colour, indexed r*16 + g*4 + b in levels 0-3.
+  var LCD = [
+      0x000000, 0x001E41, 0x004387, 0x0068CA, 0x2B4A2C, 0x27514F, 0x16638D, 0x007DCE,
+      0x5E9860, 0x5C9B72, 0x57A5A2, 0x4CB4DB, 0x8EE391, 0x8EE69E, 0x8AEBC0, 0x84F5F1,
+      0x4A161B, 0x482748, 0x40488A, 0x2F6BCC, 0x564E36, 0x545454, 0x4F6790, 0x4180D0,
+      0x759A64, 0x759D76, 0x71A6A4, 0x69B5DD, 0x9EE594, 0x9DE7A0, 0x9BECC2, 0x95F6F2,
+      0x99353F, 0x983E5A, 0x955694, 0x8F74D2, 0x9D5B4D, 0x9D6064, 0x9A7099, 0x9587D5,
+      0xAFA072, 0xAEA382, 0xABABAB, 0xA7BAE2, 0xC9E89D, 0xC9EAA7, 0xC7F0C8, 0xC3F9F7,
+      0xE35462, 0xE25874, 0xE16AA3, 0xDE83DC, 0xE66E6B, 0xE6727C, 0xE37FA7, 0xE194DF,
+      0xF1AA86, 0xF1AD93, 0xEFB5B8, 0xECC3EB, 0xFFEEAB, 0xFFF1B5, 0xFFF6D3, 0xFFFFFF
+  ];
+
   function preview() {
     var canvas = document.getElementById('psyble-preview');
     if (!canvas) return;
@@ -100,17 +112,28 @@ module.exports = function () {
     g.fillStyle = '#FFFFFF'; g.font = 'bold ' + (round ? 28 : 21) + 'px sans-serif';
     g.fillText(String(new Date().getDate()), slotX, cy + (round ? 20 : 15));
 
-    var k = round ? 1 : 0;
-    var hr = [[42, 66][k], [11, 17][k], [6.5, 9][k], [3.6, 5][k]], mn = [[64, 108][k], [15, 23][k], [5, 7][k], [2.5, 3.4][k]];
+    var r = round ? 1 : 0;
+    var hr = [[42, 66][r], [11, 17][r], [6.5, 9][r], [3.6, 5][r]], mn = [[64, 108][r], [15, 23][r], [5, 7][r], [2.5, 3.4][r]];
     if (stretch) { mn[0] = ringDist(0, mAng) - 11; hr[0] = (ringDist(0, hAng) - 11) * 0.64; }
-    var sdx = [1.1, 1.6][k], sdy = [1.5, 2.2][k];
+    var sdx = [1.1, 1.6][r], sdy = [1.5, 2.2][r];
     hand(hAng, hr[1], hr[0], hr[2], hr[3], sdx, sdy, 0);
     hand(hAng, hr[1], hr[0], hr[2], hr[3], 0, 0, 0xFFFFFF);
-    disc(cx, cy, [5.6, 8][k], 0xFFFFFF);
+    disc(cx, cy, [5.6, 8][r], 0xFFFFFF);
     hand(mAng, mn[1], mn[0], mn[2], mn[3], 2 * sdx, 2 * sdy, 0);
     hand(mAng, mn[1], mn[0], mn[2], mn[3], 0, 0, 0xFFFFFF);
-    disc(cx, cy, [3.9, 5.6][k], 0xFFFFFF);
-    disc(cx, cy, [1.7, 2.4][k], accent);
+    disc(cx, cy, [3.9, 5.6][r], 0xFFFFFF);
+    disc(cx, cy, [1.7, 2.4][r], accent);
+
+    // Snap to the watch's 64 colours, then map each to how the colour screen shows it (the table
+    // pebble-tool's screenshots use), so the preview looks as washed out as the watch.
+    var img = g.getImageData(0, 0, px[0], px[1]), d = img.data;
+    for (var j = 0; j < d.length; j += 4) {
+      var c = LCD[Math.round(d[j] / 85) * 16 + Math.round(d[j + 1] / 85) * 4 + Math.round(d[j + 2] / 85)];
+      d[j] = c >> 16;
+      d[j + 1] = (c >> 8) & 255;
+      d[j + 2] = c & 255;
+    }
+    g.putImageData(img, 0, 0);
   }
 
   clay.on(clay.EVENTS.AFTER_BUILD, function () {
