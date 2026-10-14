@@ -31,6 +31,20 @@ module.exports = [
         sunlight: false
       },
       {
+        type: 'toggle',
+        messageKey: 'TICK_AUTO',
+        label: 'Automatic tick colour',
+        description: 'Pale yellow, or white on black and grey dials.',
+        defaultValue: true
+      },
+      {
+        type: 'color',
+        messageKey: 'TICK',
+        label: 'Tick colour',
+        defaultValue: 'FFFFAA',
+        sunlight: false
+      },
+      {
         type: 'color',
         messageKey: 'ACCENT',
         label: 'Accent',

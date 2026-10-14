@@ -35,6 +35,8 @@
       "SUNRISE",
       "SUNSET",
       "DIAL",
+      "TICK",
+      "TICK_AUTO",
       "ACCENT",
       "COUNTDOWN_AT",
       "HAND_REACH",

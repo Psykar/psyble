@@ -3,7 +3,7 @@ var clayConfig = require('./config');
 var calendar = require('./calendar');
 var sun = require('./sun');
 
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+var clay = new Clay(clayConfig, require('./config-page'), { autoHandleEvents: false });
 
 // Must match MAX_EVENTS and TITLE_LEN in src/c/state.h.
 var MAX_EVENTS = 8;
@@ -192,6 +192,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   var s = settings();
   send({
     DIAL: Number(s.DIAL === undefined ? 0x005555 : s.DIAL),
+    TICK: s.TICK_AUTO === false ? Number(s.TICK === undefined ? 0xFFFFAA : s.TICK) : -1,
     ACCENT: Number(s.ACCENT || 0xFFAA00),
     COUNTDOWN_AT: parseInt(s.COUNTDOWN_AT || '0', 10),
     HAND_REACH: s.HAND_REACH ? 1 : 0,

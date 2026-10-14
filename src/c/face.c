@@ -375,11 +375,12 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
 
   const Settings *st = &s->settings;
   // Marks derive from the dial: minute ticks a step lighter per channel, the battery track a step
-  // darker (lighter on black), major ticks pale yellow, or white on greys. Teal (0x005555) and
-  // black reproduce the mock-up's two themes.
+  // darker (lighter on black), and unless chosen, major ticks pale yellow, or white on greys.
+  // Teal (0x005555) and black reproduce the mock-up's two themes.
   GColor dial = (GColor){.argb = st->dial};
   bool grey = dial.r == dial.g && dial.g == dial.b;
-  Palette th = {dial, grey ? GColorWhite : GColorFromHEX(0xFFFFAA), step(dial, 1),
+  GColor tick = st->tick ? (GColor){.argb = st->tick} : grey ? GColorWhite : GColorFromHEX(0xFFFFAA);
+  Palette th = {dial, tick, step(dial, 1),
                 (dial.r | dial.g | dial.b) ? step(dial, -1) : step(dial, 1), GColorBlack};
   GColor accent = (GColor){.argb = st->accent};
 

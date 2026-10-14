@@ -234,6 +234,10 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     s_state.settings.dial = GColorFromHEX(t->value->int32).argb;
     settings_changed = true;
   }
+  if ((t = dict_find(it, MESSAGE_KEY_TICK))) {  // < 0 = automatic
+    s_state.settings.tick = t->value->int32 < 0 ? 0 : GColorFromHEX(t->value->int32).argb;
+    settings_changed = true;
+  }
   if ((t = dict_find(it, MESSAGE_KEY_ACCENT))) {
     s_state.settings.accent = GColorFromHEX(t->value->int32).argb;
     settings_changed = true;
