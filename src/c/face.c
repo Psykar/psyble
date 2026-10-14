@@ -311,9 +311,13 @@ static void draw_sun(GContext *ctx, int minutes, bool rise) {
   if (minutes == SUN_UNKNOWN) return;
   float deg = (minutes % 720) / 2.f;
   GColor c = rise ? C_SUNRISE : C_SUNSET;
-  Xf t = edge_xf(PBL_IF_ROUND_ELSE(15, 10.5f), deg, PBL_IF_ROUND_ELSE(0.89f, 0.6f) * g.k);
-  float rot = t.rot;
-  Pt edge = ring(0, deg);
+  // The chevron sits straight in from the sun, not further along the ray, which on rectangular
+  // screens meets the edge at a slant.
+  Xf e = edge_xf(0, deg, g.k);
+  Pt chev = xf(&e, 0, -PBL_IF_ROUND_ELSE(15, 10.5f));
+  Xf t = {{iround(chev.x), iround(chev.y)}, PBL_IF_ROUND_ELSE(0.89f, 0.6f) * g.k, e.rot};
+  float rot = e.rot;
+  Pt edge = e.o;
   int ri = FMAX(2, iround(PBL_IF_ROUND_ELSE(4.f, 3.5f) * g.k));
   GRect rect = GRect(iround(edge.x) - ri, iround(edge.y) - ri, 2 * ri, 2 * ri);
   graphics_context_set_fill_color(ctx, c);
