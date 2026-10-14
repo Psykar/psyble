@@ -377,20 +377,12 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   float m_ang = s->tm.tm_min * 6.f;
 #define CLEAR(a) FMIN(ang_dist((a), h_ang), ang_dist((a), m_ang))
 
-  // Calendar: the next 12 hours shaded round the ring.
   const Event *next = NULL;
   float next_s = 0;
-  for (int i = 0; i < s->n_events; i++) {
-    const Event *e = &s->events[i];
-    float es = hours_since_midnight(s, e->start), ee = hours_since_midnight(s, e->end);
-    float s0 = FMAX(es, now), e0 = FMIN(ee, now + 12.f);
-    if (e0 > s0) {
-      float a = s0 * 30.f, b = FMAX(a + 1.f, e0 * 30.f - 1.f);
-      fill_band(ctx, PBL_IF_ROUND_ELSE(1, -1), PBL_IF_ROUND_ELSE(11, 6), a, b, (GColor){.argb = e->color},
-                e->tentative ? px(PBL_IF_ROUND_ELSE(2.5f, 1.7f)) : 0);
-    }
-    if (!next && es >= now && es < now + 12.f) {
-      next = e;
+  for (int i = 0; i < s->n_events && !next; i++) {
+    float es = hours_since_midnight(s, s->events[i].start);
+    if (es >= now && es < now + 12.f) {
+      next = &s->events[i];
       next_s = es;
     }
   }
@@ -407,6 +399,17 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   ticks(ctx, PBL_IF_ROUND_ELSE(8, 3.5f), PBL_IF_ROUND_ELSE(1, -1), 1, th.min_tick, is_minute);
   ticks(ctx, PBL_IF_ROUND_ELSE(19, 9), PBL_IF_ROUND_ELSE(1, -1), px(PBL_IF_ROUND_ELSE(2.5f, 2.f)), th.tick, is_hour);
   ticks(ctx, PBL_IF_ROUND_ELSE(27, 14), PBL_IF_ROUND_ELSE(1, -1), px(PBL_IF_ROUND_ELSE(4.5f, 3.5f)), th.tick, is_quarter);
+
+  // Calendar: the next 12 hours shaded round the ring, over the ticks.
+  for (int i = 0; i < s->n_events; i++) {
+    const Event *e = &s->events[i];
+    float s0 = FMAX(hours_since_midnight(s, e->start), now), e0 = FMIN(hours_since_midnight(s, e->end), now + 12.f);
+    if (e0 > s0) {
+      float a = s0 * 30.f, b = FMAX(a + 1.f, e0 * 30.f - 1.f);
+      fill_band(ctx, PBL_IF_ROUND_ELSE(1, -1), PBL_IF_ROUND_ELSE(11, 6), a, b, (GColor){.argb = e->color},
+                e->tentative ? px(PBL_IF_ROUND_ELSE(2.5f, 1.7f)) : 0);
+    }
+  }
 
   if (sweep) {
     // Tip where the sweep starts; the arms reach back anticlockwise along the edge.
