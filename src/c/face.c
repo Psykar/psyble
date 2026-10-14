@@ -10,6 +10,9 @@
 #define FMAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define DESIGN_R 130.f
+// Insets of the line from now to the next event.
+#define SWEEP_OUTER PBL_IF_ROUND_ELSE(5.25f, 7.65f)
+#define SWEEP_INNER PBL_IF_ROUND_ELSE(6.25f, 8.65f)
 // Barlow Condensed: cap height 0.70em; with CSS line-height 1 the baseline sits 0.90em below the box top.
 #define CAP_EM 0.70f
 #define BASELINE_EM 0.90f
@@ -398,7 +401,7 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   if (sweep) {
     float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f);
     // Runs into the next-event triangle, whose tip sits on this line on rectangular screens.
-    fill_band(ctx, PBL_IF_ROUND_ELSE(5.25f, 7.65f), PBL_IF_ROUND_ELSE(6.25f, 8.65f), a_now + lead, a_next, C_GREY, 0);
+    fill_band(ctx, SWEEP_OUTER, SWEEP_INNER, a_now + lead, a_next, C_GREY, 0);
   }
 
   ticks(ctx, PBL_IF_ROUND_ELSE(8, 3.5f), PBL_IF_ROUND_ELSE(1, -1), 1, th.min_tick, is_minute);
@@ -415,6 +418,8 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
     line(ctx, c2, c3, wo, th.dial);
     line(ctx, c1, c2, wi, C_GREY);
     line(ctx, c2, c3, wi, C_GREY);
+    // The halo above cuts into the start of the line; redraw it so the line grows out of the tip.
+    fill_band(ctx, SWEEP_OUTER, SWEEP_INNER, a_now + lead, FMIN(a_now + lead + 4.f, a_next), C_GREY, 0);
   }
 
   GColor next_c = next ? (GColor){.argb = next->color} : C_GREY;
