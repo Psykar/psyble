@@ -44,6 +44,7 @@ typedef struct {
   Settings settings;
 } State;
 
-void face_draw(GContext *ctx, GRect bounds, const State *s);
+// `visible` is the part not covered by Timeline Quick View.
+void face_draw(GContext *ctx, GRect bounds, GRect visible, const State *s);
 void face_init(void);
 void face_deinit(void);

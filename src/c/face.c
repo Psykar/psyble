@@ -369,7 +369,7 @@ static float hours_since_midnight(const State *s, time_t t) {
   return (t - midnight) / 3600.f;
 }
 
-void face_draw(GContext *ctx, GRect bounds, const State *s) {
+void face_draw(GContext *ctx, GRect bounds, GRect visible, const State *s) {
   layout(bounds);
   graphics_context_set_antialiased(ctx, true);
 
@@ -457,16 +457,22 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   fill_disc_ring(ctx, centre, bat_r + bat_w / 2.f, bat_w, 0, 360, th.track);
   if (s->battery > 0) fill_disc_ring(ctx, centre, bat_r + bat_w / 2.f, bat_w, 0, s->battery * 3.6f, bat_c);
 
-  // Dodge: date and next-event card take the clearest of 8 slots, at least 90deg apart.
-  float best_a = 0, best_s = -1, second_a = 0, second_s = -1;
+  // Dodge: date and next-event card take the clearest of 8 slots, at least 90deg apart. Slots that
+  // would put them under Timeline Quick View lose out (the card at its tallest, two title lines).
+  float vis_bottom = visible.origin.y + visible.size.h;
+  float date_half = (s_weekday.em + 1.f + s_day.em) / 2.f;
+  float card_half = (3.f + PBL_IF_ROUND_ELSE(3.f, 2.f) + s_time.em + 2.f * (1.f + s_label.em)) / 2.f;
+#define COVERED(r, a, half) (slot((r), (a)).y + (half) > vis_bottom ? 1000.f : 0.f)
+  float best_a = 0, best_s = -1e9f, second_a = 0, second_s = -1e9f;
   for (int i = 0; i < 8; i++) {
-    float a = i * 45.f, sc = CLEAR(a) + (i % 2 == 0 ? 8.f : 0.f);
+    float a = i * 45.f, sc = CLEAR(a) + (i % 2 == 0 ? 8.f : 0.f) - COVERED(66, a, date_half);
     if (sc > best_s) { best_s = sc; best_a = a; }
   }
   for (int i = 0; i < 8; i++) {
-    float a = i * 45.f, sc = CLEAR(a) + (i % 2 == 0 ? 8.f : 0.f);
+    float a = i * 45.f, sc = CLEAR(a) + (i % 2 == 0 ? 8.f : 0.f) - COVERED(68, a, card_half);
     if (ang_dist(a, best_a) >= 90.f && sc > second_s) { second_s = sc; second_a = a; }
   }
+#undef COVERED
 
   static const char *const WEEKDAYS[] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
   char day_buf[4];

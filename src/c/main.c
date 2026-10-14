@@ -16,7 +16,7 @@ static int32_t s_data_hash;
 static time_t s_seconds_until;
 
 static void update_proc(Layer *layer, GContext *ctx) {
-  face_draw(ctx, layer_get_bounds(layer), &s_state);
+  face_draw(ctx, layer_get_bounds(layer), layer_get_unobstructed_bounds(layer), &s_state);
 }
 
 static void redraw(void) {
@@ -148,6 +148,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits changed) {
   }
   int interval = s_state.settings.refresh_minutes ? s_state.settings.refresh_minutes : 30;
   if ((changed & MINUTE_UNIT) && (tick_time->tm_hour * 60 + tick_time->tm_min) % interval == 0) request_refresh();
+  redraw();
+}
+
+static void unobstructed_change(AnimationProgress progress, void *context) {
   redraw();
 }
 
@@ -295,6 +299,7 @@ static void init(void) {
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   battery_state_service_subscribe(battery_handler);
   accel_tap_service_subscribe(tap_handler);
+  unobstructed_area_service_subscribe((UnobstructedAreaHandlers){.change = unobstructed_change}, NULL);
   connection_service_subscribe((ConnectionHandlers){.pebble_app_connection_handler = bt_handler});
 
   app_message_register_inbox_received(inbox_received);
@@ -305,6 +310,7 @@ static void deinit(void) {
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
   accel_tap_service_unsubscribe();
+  unobstructed_area_service_unsubscribe();
   connection_service_unsubscribe();
   window_destroy(s_window);
   face_deinit();
