@@ -191,7 +191,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   clay.getSettings(e.response);
   var s = settings();
   send({
-    DIAL: Number(s.DIAL === undefined ? 0x0000AA : s.DIAL),
+    DIAL: Number(s.DIAL === undefined ? 0x000055 : s.DIAL),
     TICK: s.TICK_AUTO === false ? Number(s.TICK === undefined ? 0xFFFFAA : s.TICK) : -1,
     ACCENT: Number(s.ACCENT || 0xFFAA00),
     COUNTDOWN_AT: parseInt(s.COUNTDOWN_AT || '0', 10),

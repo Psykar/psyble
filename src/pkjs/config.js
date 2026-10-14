@@ -31,7 +31,7 @@ module.exports = [
         messageKey: 'DIAL',
         label: 'Dial',
         description: 'Hands and text are white, so darker colours read best.',
-        defaultValue: '0000AA',
+        defaultValue: '000055',
         sunlight: false
       },
       {

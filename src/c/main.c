@@ -58,7 +58,7 @@ static void load_settings(void) {
       .hand_stretch = false,
       .refresh_minutes = 30,
       .shake_seconds = 30,
-      .dial = GColorFromHEX(0x0000AA).argb,
+      .dial = GColorFromHEX(0x000055).argb,
   };
   int n = persist_exists(SETTINGS_KEY) ? persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings)) : 0;
   // Settings saved before `dial` existed keep their teal or black theme.

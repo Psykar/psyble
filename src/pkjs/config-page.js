@@ -38,7 +38,7 @@ module.exports = function () {
       return levels(n).reduce(function (acc, l) { return acc * 256 + Math.max(0, Math.min(3, l + d)) * 85; }, 0);
     }
 
-    var dial = rgb(val('DIAL', 0x0000AA)), L = levels(dial);
+    var dial = rgb(val('DIAL', 0x000055)), L = levels(dial);
     var grey = L[0] === L[1] && L[1] === L[2];
     var tick = val('TICK_AUTO', true) ? (grey ? 0xFFFFFF : 0xFFFFAA) : rgb(val('TICK', 0xFFFFAA));
     var accent = rgb(val('ACCENT', 0xFFAA00));
