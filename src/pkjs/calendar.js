@@ -3,14 +3,22 @@ var ICAL = require('ical.js');
 // Daily events that started years ago need one iteration per day to reach today.
 var MAX_ITERATIONS = 20000;
 
+// Google takes ~16 s to start sending a large private feed, longer than some phone apps' default
+// request timeout. Failures report how long they ran, so a fixed limit shows up on the watch.
+var TIMEOUT_MS = 120000;
+
 function fetchText(url, callback) {
   var xhr = new XMLHttpRequest();
+  var started = Date.now();
+  function fail(what) { callback(new Error(what + ' ' + Math.round((Date.now() - started) / 1000) + 's')); }
   xhr.onload = function () {
     if (xhr.status >= 200 && xhr.status < 300) callback(null, xhr.responseText);
     else callback(new Error('HTTP ' + xhr.status));
   };
-  xhr.onerror = function () { callback(new Error('network error')); };
+  xhr.onerror = function () { fail('network error'); };
+  xhr.ontimeout = function () { fail('timed out'); };
   xhr.open('GET', url.replace(/^webcal:\/\//i, 'https://'));
+  xhr.timeout = TIMEOUT_MS;
   xhr.send();
 }
 
