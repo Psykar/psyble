@@ -410,10 +410,11 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
 
   if (sweep) {
     // Tip where the sweep starts; the arms reach back anticlockwise along the edge.
-    float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f), back = PBL_IF_ROUND_ELSE(7.5f, 3.f), arm = PBL_IF_ROUND_ELSE(4.75f, 2.f);
+    float lead = PBL_IF_ROUND_ELSE(3.5f, 2.5f), back = PBL_IF_ROUND_ELSE(7.5f, 4.f), arm = PBL_IF_ROUND_ELSE(4.75f, 3.f);
     Xf t = edge_xf(PBL_IF_ROUND_ELSE(5.75f, 8.15f), a_now + lead, g.k);
     Pt c1 = xf(&t, back, -arm), c2 = xf(&t, 0, 0), c3 = xf(&t, back, arm);
-    int wo = px(PBL_IF_ROUND_ELSE(4.5f, 3.6f)), wi = px(PBL_IF_ROUND_ELSE(2.5f, 2.f));
+    // As wide as the line, which fill_poly's smoothing outline widens by 1px on rectangular screens.
+    int wi = px(SWEEP_INNER - SWEEP_OUTER) + PBL_IF_ROUND_ELSE(0, 1), wo = wi + 2;
     line(ctx, c1, c2, wo, th.dial);
     line(ctx, c2, c3, wo, th.dial);
     line(ctx, c1, c2, wi, C_GREY);
