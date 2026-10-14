@@ -18,12 +18,13 @@ typedef struct {
 
 // Persisted as one blob; append fields only, or bump SETTINGS_KEY.
 typedef struct {
-  uint8_t theme;
+  uint8_t theme;   // Theme; superseded by `dial`, read only to migrate older settings
   uint8_t accent;  // GColor8 argb
   uint8_t countdown_at;
   bool hand_stretch;
   uint8_t refresh_minutes;  // calendar check interval; divides 1440
   uint8_t shake_seconds;    // how long a shake shows the second hand; 0 = never
+  uint8_t dial;             // GColor8 argb
 } Settings;
 
 typedef struct {

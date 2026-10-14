@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "state.h"
 
 #define SETTINGS_KEY 1
@@ -57,8 +58,12 @@ static void load_settings(void) {
       .hand_stretch = false,
       .refresh_minutes = 30,
       .shake_seconds = 30,
+      .dial = GColorFromHEX(0x005555).argb,
   };
-  if (persist_exists(SETTINGS_KEY)) persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings));
+  int n = persist_exists(SETTINGS_KEY) ? persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings)) : 0;
+  if (n > 0 && n <= (int)offsetof(Settings, dial) && s_state.settings.theme == THEME_BLACK) {
+    s_state.settings.dial = GColorBlack.argb;
+  }
 
   int16_t sun[2] = {SUN_UNKNOWN, SUN_UNKNOWN};
   if (persist_exists(SUN_KEY)) persist_read_data(SUN_KEY, sun, sizeof(sun));
@@ -225,8 +230,8 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     strncpy(s_state.status, t->value->cstring, sizeof(s_state.status) - 1);
     persist_write_string(STATUS_KEY, s_state.status);
   }
-  if ((t = dict_find(it, MESSAGE_KEY_THEME))) {
-    s_state.settings.theme = t->value->int32;
+  if ((t = dict_find(it, MESSAGE_KEY_DIAL))) {
+    s_state.settings.dial = GColorFromHEX(t->value->int32).argb;
     settings_changed = true;
   }
   if ((t = dict_find(it, MESSAGE_KEY_ACCENT))) {

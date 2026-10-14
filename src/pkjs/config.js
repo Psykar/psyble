@@ -23,11 +23,12 @@ module.exports = [
     items: [
       { type: 'heading', defaultValue: 'Look' },
       {
-        type: 'select',
-        messageKey: 'THEME',
+        type: 'color',
+        messageKey: 'DIAL',
         label: 'Dial',
-        defaultValue: '1',
-        options: [{ label: 'Teal', value: '1' }, { label: 'Black', value: '0' }]
+        description: 'Hands and text are white, so darker colours read best.',
+        defaultValue: '005555',
+        sunlight: false
       },
       {
         type: 'color',

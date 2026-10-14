@@ -66,6 +66,12 @@ static float ang_dist(float a, float b) {
   return FMIN(d, 360.f - d);
 }
 
+// Each colour channel moved `d` of its 4 levels, clamped.
+static GColor step(GColor c, int d) {
+  int r = c.r + d, g_ = c.g + d, b = c.b + d;
+  return (GColor){.a = 3, .r = r < 0 ? 0 : r > 3 ? 3 : r, .g = g_ < 0 ? 0 : g_ > 3 ? 3 : g_, .b = b < 0 ? 0 : b > 3 ? 3 : b};
+}
+
 static int iround(float v) { return (int)(v < 0 ? v - 0.5f : v + 0.5f); }
 static GPoint gp(Pt p) { return GPoint(iround(p.x), iround(p.y)); }
 static int px(float units) { return FMAX(1, iround(units * g.k)); }
@@ -368,10 +374,13 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   graphics_context_set_antialiased(ctx, true);
 
   const Settings *st = &s->settings;
-  Palette th = st->theme == THEME_TEAL
-                   ? (Palette){GColorFromHEX(0x005555), GColorFromHEX(0xFFFFAA), GColorFromHEX(0x55AAAA),
-                               GColorBlack, GColorBlack}
-                   : (Palette){GColorBlack, GColorWhite, C_DARK_GREY, C_DARK_GREY, GColorBlack};
+  // Marks derive from the dial: minute ticks a step lighter per channel, the battery track a step
+  // darker (lighter on black), major ticks pale yellow, or white on greys. Teal (0x005555) and
+  // black reproduce the mock-up's two themes.
+  GColor dial = (GColor){.argb = st->dial};
+  bool grey = dial.r == dial.g && dial.g == dial.b;
+  Palette th = {dial, grey ? GColorWhite : GColorFromHEX(0xFFFFAA), step(dial, 1),
+                (dial.r | dial.g | dial.b) ? step(dial, -1) : step(dial, 1), GColorBlack};
   GColor accent = (GColor){.argb = st->accent};
 
   graphics_context_set_fill_color(ctx, th.dial);
