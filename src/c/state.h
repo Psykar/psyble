@@ -36,6 +36,8 @@ typedef struct {
   int16_t sunrise_min;  // minutes after local midnight, or SUN_UNKNOWN
   int16_t sunset_min;
   Event events[MAX_EVENTS];  // sorted by start
+  char status[32];  // phone's calendar status, shown when there's no upcoming event; "" = fine
+  bool has_data;    // the phone has synced at least once
   uint8_t n_events;
   Settings settings;
 } State;

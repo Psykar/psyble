@@ -526,6 +526,19 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
       text(ctx, short_buf, &s_countdown, at_end ? GColorWhite : C_GREY, p.x,
            p.y + (CAP_EM / 2.f) * s_countdown.em, 60);
     }
+  } else {
+    // No upcoming event: explain an empty dial if the phone reported a problem or never synced.
+    const char *msg = s->status[0] ? s->status : s->has_data ? NULL : "Waiting for phone";
+    if (msg) {
+      Pt c = slot(68, second_a);
+      int max_w = PBL_IF_ROUND_ELSE(iround(90 * g.k), iround(64 * g.kx));
+      char line1[sizeof(s->status)];
+      const char *line2;
+      wrap(msg, &s_label, max_w, line1, sizeof(line1), &line2);
+      float gap = 1.f, y = c.y - (line2 ? s_label.em + gap / 2.f : s_label.em / 2.f);
+      text(ctx, line1, &s_label, C_GREY, c.x, y + BASELINE_EM * s_label.em, max_w);
+      if (line2) text(ctx, line2, &s_label, C_GREY, c.x, y + s_label.em + gap + BASELINE_EM * s_label.em, max_w);
+    }
   }
 
   // Status icons: beside the date on round screens; fixed in the top corners on rectangular ones,

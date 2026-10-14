@@ -13,6 +13,8 @@ var CALENDARS = 3;
 var LOCATION_KEY = 'psyble-location';
 var LAST_FETCH_KEY = 'psyble-last-fetch';
 var WATCH_HASH_KEY = 'psyble-watch-hash';  // DATA_HASH of what the watch last stored
+var STATUS_KEY = 'psyble-status';  // STATUS the watch last stored
+var STATUS_BYTES = 31;  // Must match State.status in src/c/state.h
 // 'ready' fires every time the face opens; each fetch of a Google feed is ~3 MB of phone data.
 var READY_MIN_GAP_MS = 10 * 60 * 1000;
 
@@ -71,11 +73,38 @@ function hash(s) {
   return h;
 }
 
-function send(dict) {
-  Pebble.sendAppMessage(dict, function () {}, function (e) {
+// Messages go one at a time: a send while another is in flight can be rejected as busy.
+var queue = [];
+var sending = false;
+
+function send(dict, onAck) {
+  queue.push({ dict: dict, onAck: onAck });
+  pump();
+}
+
+function pump() {
+  if (sending || !queue.length) return;
+  sending = true;
+  var item = queue.shift();
+  Pebble.sendAppMessage(item.dict, function () {
+    sending = false;
+    if (item.onAck) item.onAck();
+    pump();
+  }, function (e) {
+    sending = false;
     console.log('send failed: ' + JSON.stringify(e));
+    pump();
   });
 }
+
+// Shown on the watch when there's no upcoming event; '' when all is well.
+function setStatus(s) {
+  s = s.slice(0, STATUS_BYTES);
+  if (s === (localStorage.getItem(STATUS_KEY) || '')) return;
+  send({ STATUS: s }, function () { localStorage.setItem(STATUS_KEY, s); });
+}
+
+function clock(d) { return d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2); }
 
 var busy = false;
 var again = false;
@@ -93,8 +122,14 @@ function refresh(watchHash) {
   localStorage.setItem(LAST_FETCH_KEY, String(Date.now()));
   var now = new Date();
   var pending = 2;
-  var failed = false;
+  var errors = [];
   var dict = {};
+  var cals = calendars();
+  // While the watch has no data or is showing a status, report progress so a stalled or crashed
+  // fetch shows where it stopped.
+  var fresh = !Number(localStorage.getItem(WATCH_HASH_KEY)) || !!localStorage.getItem(STATUS_KEY);
+  function progress(s) { if (fresh) setStatus(s); }
+  var finalStatus = cals.length ? '' : 'No calendar set';
   function done() {
     if (--pending) return;
     busy = false;
@@ -103,16 +138,19 @@ function refresh(watchHash) {
       refresh();
       return;
     }
-    if (failed) return;  // keep what the watch has rather than wiping it
+    if (errors.length) {
+      setStatus(errors[0]);  // keep the watch's events rather than wiping them
+      return;
+    }
     dict.DATA_HASH = hash([dict.EVENTS, dict.SUNRISE, dict.SUNSET].join('|'));
     if (String(dict.DATA_HASH) === localStorage.getItem(WATCH_HASH_KEY)) {
       console.log('unchanged; not sending');
+      setStatus(finalStatus);
       return;
     }
-    Pebble.sendAppMessage(dict, function () {
+    send(dict, function () {
       localStorage.setItem(WATCH_HASH_KEY, String(dict.DATA_HASH));
-    }, function (e) {
-      console.log('send failed: ' + JSON.stringify(e));
+      setStatus(finalStatus);
     });
   }
 
@@ -123,17 +161,17 @@ function refresh(watchHash) {
     done();
   });
 
-  var cals = calendars();
   if (!cals.length) {
     dict.EVENTS = '';
     done();
     return;
   }
-  calendar.loadEvents(cals, now, new Date(now.getTime() + WINDOW_HOURS * 3600 * 1000), function (events, ok) {
-    failed = !ok;
+  progress('Downloading... ' + clock(now));
+  calendar.loadEvents(cals, now, new Date(now.getTime() + WINDOW_HOURS * 3600 * 1000), function (events, errs) {
+    errors = errs;
     dict.EVENTS = encodeEvents(events);
     done();
-  });
+  }, function (s) { progress('Reading ' + s); });
 }
 
 Pebble.addEventListener('ready', function () {

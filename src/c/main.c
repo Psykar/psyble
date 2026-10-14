@@ -4,6 +4,7 @@
 #define SUN_KEY 2
 #define EVENTS_COUNT_KEY 3
 #define DATA_HASH_KEY 4  // phone's hash of the events and sun times stored here; 0 = none
+#define STATUS_KEY 5
 #define EVENTS_KEY_0 10  // events are persisted in chunks: PERSIST_DATA_MAX_LENGTH is 256 bytes
 #define EVENTS_PER_CHUNK 4
 
@@ -217,7 +218,12 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_DATA_HASH))) {
     s_data_hash = t->value->int32;
+    s_state.has_data = s_data_hash != 0;
     persist_write_int(DATA_HASH_KEY, s_data_hash);
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_STATUS))) {
+    strncpy(s_state.status, t->value->cstring, sizeof(s_state.status) - 1);
+    persist_write_string(STATUS_KEY, s_state.status);
   }
   if ((t = dict_find(it, MESSAGE_KEY_THEME))) {
     s_state.settings.theme = t->value->int32;
@@ -266,6 +272,8 @@ static void init(void) {
   load_settings();
   load_events();
   s_data_hash = persist_exists(DATA_HASH_KEY) ? persist_read_int(DATA_HASH_KEY) : 0;
+  s_state.has_data = s_data_hash != 0;
+  if (persist_exists(STATUS_KEY)) persist_read_string(STATUS_KEY, s_state.status, sizeof(s_state.status));
   face_init();
   s_state.battery = battery_state_service_peek().charge_percent;
   bt_handler(connection_service_peek_pebble_app_connection());

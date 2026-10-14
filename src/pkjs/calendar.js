@@ -105,29 +105,32 @@ function parseEvents(icsText, color, from, to, owner) {
   return out;
 }
 
-// Fetches every calendar and calls back with their events in [from, to), sorted by start, and
-// whether every calendar loaded. `calendars` is [{url, color}]; a failing calendar is logged.
-function loadEvents(calendars, from, to, callback) {
+// Fetches every calendar and calls back with their events in [from, to), sorted by start, and a
+// short message per calendar that failed. `calendars` is [{url, color}]. `progress`, if given,
+// gets a message as each download finishes, before the (slow) parse.
+function loadEvents(calendars, from, to, callback, progress) {
   var pending = calendars.length;
   var all = [];
-  var ok = true;
-  if (!pending) return callback(all, ok);
-  calendars.forEach(function (cal) {
+  var errors = [];
+  if (!pending) return callback(all, errors);
+  calendars.forEach(function (cal, i) {
+    var name = 'Calendar ' + (i + 1) + ': ';
     fetchText(cal.url, function (err, text) {
       if (err) {
         console.log('calendar fetch failed: ' + err.message);
-        ok = false;
+        errors.push(name + err.message);
       } else {
+        if (progress) progress(name + (text.length / 1e6).toFixed(1) + ' MB');
         try {
           all = all.concat(parseEvents(text, cal.color, from, to, calendarOwner(cal.url)));
         } catch (e) {
           console.log('calendar parse failed: ' + e);
-          ok = false;
+          errors.push(name + "can't read");
         }
       }
       if (--pending === 0) {
         all.sort(function (a, b) { return a.start - b.start; });
-        callback(all, ok);
+        callback(all, errors);
       }
     });
   });
