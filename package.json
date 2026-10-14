@@ -39,6 +39,7 @@
       "COUNTDOWN_AT",
       "HAND_REACH",
       "REQUEST",
+      "DATA_HASH",
       "CAL_URL[3]",
       "CAL_COLOR[3]"
     ],

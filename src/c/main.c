@@ -3,6 +3,7 @@
 #define SETTINGS_KEY 1
 #define SUN_KEY 2
 #define EVENTS_COUNT_KEY 3
+#define DATA_HASH_KEY 4  // phone's hash of the events and sun times stored here; 0 = none
 #define EVENTS_KEY_0 10  // events are persisted in chunks: PERSIST_DATA_MAX_LENGTH is 256 bytes
 #define EVENTS_PER_CHUNK 4
 
@@ -11,6 +12,7 @@
 static Window *s_window;
 static Layer *s_layer;
 static State s_state;
+static int32_t s_data_hash;
 
 static void update_proc(Layer *layer, GContext *ctx) {
   face_draw(ctx, layer_get_bounds(layer), &s_state);
@@ -40,6 +42,7 @@ static void load_events(void) {
     if (persist_read_data(EVENTS_KEY_0 + i, &s_state.events[i * EVENTS_PER_CHUNK], c * sizeof(Event)) !=
         (int)(c * sizeof(Event))) {
       n = 0;
+      persist_delete(DATA_HASH_KEY);  // so the phone resends
       break;
     }
   }
@@ -75,9 +78,15 @@ static void drop_past_events(void) {
 }
 
 static void request_refresh(void) {
+  // The minute tick can repeat within a minute after the clock changes; each request costs the
+  // phone a full calendar download.
+  static time_t s_last;
+  if (s_state.now - s_last < 60) return;
+  s_last = s_state.now;
   DictionaryIterator *it;
   if (app_message_outbox_begin(&it) != APP_MSG_OK) return;
   dict_write_uint8(it, MESSAGE_KEY_REQUEST, 1);
+  dict_write_int32(it, MESSAGE_KEY_DATA_HASH, s_data_hash);
   app_message_outbox_send();
 }
 
@@ -188,6 +197,10 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     s_state.sunset_min = sun[1];
     persist_write_data(SUN_KEY, sun, sizeof(sun));
   }
+  if ((t = dict_find(it, MESSAGE_KEY_DATA_HASH))) {
+    s_data_hash = t->value->int32;
+    persist_write_int(DATA_HASH_KEY, s_data_hash);
+  }
   if ((t = dict_find(it, MESSAGE_KEY_THEME))) {
     s_state.settings.theme = t->value->int32;
     settings_changed = true;
@@ -226,6 +239,7 @@ static void window_unload(Window *window) {
 static void init(void) {
   load_settings();
   load_events();
+  s_data_hash = persist_exists(DATA_HASH_KEY) ? persist_read_int(DATA_HASH_KEY) : 0;
   face_init();
   s_state.battery = battery_state_service_peek().charge_percent;
   bt_handler(connection_service_peek_pebble_app_connection());
