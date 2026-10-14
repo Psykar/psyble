@@ -11,6 +11,7 @@ static Window *s_window;
 static Layer *s_layer;
 static State s_state;
 static int32_t s_data_hash;
+static time_t s_seconds_until;
 
 static void update_proc(Layer *layer, GContext *ctx) {
   face_draw(ctx, layer_get_bounds(layer), &s_state);
@@ -54,6 +55,7 @@ static void load_settings(void) {
       .countdown_at = COUNTDOWN_CARD,
       .hand_stretch = false,
       .refresh_minutes = 30,
+      .shake_seconds = 30,
   };
   if (persist_exists(SETTINGS_KEY)) persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings));
 
@@ -134,8 +136,24 @@ static void refresh_time(void) {
 
 static void tick_handler(struct tm *tick_time, TimeUnits changed) {
   refresh_time();
+  if (s_state.show_seconds && s_state.now >= s_seconds_until) {
+    s_state.show_seconds = false;
+    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  }
   int interval = s_state.settings.refresh_minutes ? s_state.settings.refresh_minutes : 30;
-  if ((tick_time->tm_hour * 60 + tick_time->tm_min) % interval == 0) request_refresh();
+  if ((changed & MINUTE_UNIT) && (tick_time->tm_hour * 60 + tick_time->tm_min) % interval == 0) request_refresh();
+  redraw();
+}
+
+// A shake shows the second hand for a while, ticking every second only until it hides again.
+static void tap_handler(AccelAxisType axis, int32_t direction) {
+  if (!s_state.settings.shake_seconds) return;
+  s_seconds_until = time(NULL) + s_state.settings.shake_seconds;
+  if (!s_state.show_seconds) {
+    s_state.show_seconds = true;
+    tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  }
+  refresh_time();
   redraw();
 }
 
@@ -217,6 +235,10 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     s_state.settings.hand_stretch = t->value->int32 != 0;
     settings_changed = true;
   }
+  if ((t = dict_find(it, MESSAGE_KEY_SHAKE_SECONDS))) {
+    s_state.settings.shake_seconds = t->value->int32;
+    settings_changed = true;
+  }
   if ((t = dict_find(it, MESSAGE_KEY_REFRESH_MINUTES))) {
     s_state.settings.refresh_minutes = t->value->int32;
     settings_changed = true;
@@ -255,6 +277,7 @@ static void init(void) {
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   battery_state_service_subscribe(battery_handler);
+  accel_tap_service_subscribe(tap_handler);
   connection_service_subscribe((ConnectionHandlers){.pebble_app_connection_handler = bt_handler});
 
   app_message_register_inbox_received(inbox_received);
@@ -264,6 +287,7 @@ static void init(void) {
 static void deinit(void) {
   tick_timer_service_unsubscribe();
   battery_state_service_unsubscribe();
+  accel_tap_service_unsubscribe();
   connection_service_unsubscribe();
   window_destroy(s_window);
   face_deinit();

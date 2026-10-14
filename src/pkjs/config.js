@@ -49,6 +49,18 @@ module.exports = [
         ]
       },
       {
+        type: 'select',
+        messageKey: 'SHAKE_SECONDS',
+        label: 'Second hand after a shake',
+        defaultValue: '30',
+        options: [
+          { label: 'Off', value: '0' },
+          { label: 'For 10 seconds', value: '10' },
+          { label: 'For 30 seconds', value: '30' },
+          { label: 'For a minute', value: '60' }
+        ]
+      },
+      {
         type: 'toggle',
         messageKey: 'HAND_REACH',
         label: 'Stretch hands to the screen edge',

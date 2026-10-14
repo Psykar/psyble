@@ -40,6 +40,7 @@
       "HAND_REACH",
       "REFRESH_MINUTES",
       "REQUEST",
+      "SHAKE_SECONDS",
       "DATA_HASH",
       "CAL_URL[3]",
       "CAL_COLOR[3]"

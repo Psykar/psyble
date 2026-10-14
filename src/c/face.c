@@ -582,6 +582,13 @@ void face_draw(GContext *ctx, GRect bounds, const State *s) {
   hand_poly(hp, m_ang, mn_tail, mn_len, mn_wb, mn_wt, 0, 0);
   fill_poly(ctx, hp, 7, GColorWhite);
   disc(ctx, centre, mn_pin * g.k, GColorWhite);
+
+  if (s->show_seconds) {
+    float s_ang = s->tm.tm_sec * 6.f;
+    float sc_len = PBL_IF_ROUND_ELSE(112, 66), sc_tail = PBL_IF_ROUND_ELSE(26, 17);
+    if (!g.round && st->hand_stretch) sc_len = ring_dist(0, s_ang, NULL) / g.k - 7.f;
+    line(ctx, polar(-sc_tail, s_ang), polar(sc_len, s_ang), px(PBL_IF_ROUND_ELSE(1.5f, 1.f)), accent);
+  }
   disc(ctx, (Pt){g.cx + 0.6f * g.k, g.cy + 0.8f * g.k}, cap * g.k, pin_shadow);
   disc(ctx, centre, cap * g.k, accent);
 

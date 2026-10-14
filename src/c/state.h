@@ -23,6 +23,7 @@ typedef struct {
   uint8_t countdown_at;
   bool hand_stretch;
   uint8_t refresh_minutes;  // calendar check interval; divides 1440
+  uint8_t shake_seconds;    // how long a shake shows the second hand; 0 = never
 } Settings;
 
 typedef struct {
@@ -31,6 +32,7 @@ typedef struct {
   uint8_t battery;
   bool bt_connected;
   bool quiet;
+  bool show_seconds;
   int16_t sunrise_min;  // minutes after local midnight, or SUN_UNKNOWN
   int16_t sunset_min;
   Event events[MAX_EVENTS];  // sorted by start
