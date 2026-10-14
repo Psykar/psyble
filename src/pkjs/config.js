@@ -63,6 +63,18 @@ module.exports = [
       type: 'text',
       defaultValue: 'Paste each calendar\'s private iCal address. In Google Calendar: Settings → the calendar → ' +
         'Integrate calendar → Secret address in iCal format. Events for the next 12 hours are shaded round the dial.'
+    }, {
+      type: 'select',
+      messageKey: 'REFRESH_MINUTES',
+      label: 'Check calendars',
+      description: 'Each check downloads every calendar in full; a busy Google calendar can be several MB.',
+      defaultValue: '30',
+      options: [
+        { label: 'Every 15 minutes', value: '15' },
+        { label: 'Every 30 minutes', value: '30' },
+        { label: 'Every hour', value: '60' },
+        { label: 'Every 2 hours', value: '120' }
+      ]
     }].concat(calendar(0, '00AAFF'), calendar(1, '55AA55'), calendar(2, 'FF5500'))
   },
   { type: 'submit', defaultValue: 'Save' }

@@ -38,6 +38,7 @@
       "ACCENT",
       "COUNTDOWN_AT",
       "HAND_REACH",
+      "REFRESH_MINUTES",
       "REQUEST",
       "DATA_HASH",
       "CAL_URL[3]",

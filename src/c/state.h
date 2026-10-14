@@ -22,6 +22,7 @@ typedef struct {
   uint8_t accent;  // GColor8 argb
   uint8_t countdown_at;
   bool hand_stretch;
+  uint8_t refresh_minutes;  // calendar check interval; divides 1440
 } Settings;
 
 typedef struct {

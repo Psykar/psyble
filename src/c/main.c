@@ -7,8 +7,6 @@
 #define EVENTS_KEY_0 10  // events are persisted in chunks: PERSIST_DATA_MAX_LENGTH is 256 bytes
 #define EVENTS_PER_CHUNK 4
 
-#define REFRESH_MINUTES 30
-
 static Window *s_window;
 static Layer *s_layer;
 static State s_state;
@@ -55,6 +53,7 @@ static void load_settings(void) {
       .accent = GColorFromHEX(0xFFAA00).argb,
       .countdown_at = COUNTDOWN_CARD,
       .hand_stretch = false,
+      .refresh_minutes = 30,
   };
   if (persist_exists(SETTINGS_KEY)) persist_read_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings));
 
@@ -135,7 +134,8 @@ static void refresh_time(void) {
 
 static void tick_handler(struct tm *tick_time, TimeUnits changed) {
   refresh_time();
-  if (tick_time->tm_min % REFRESH_MINUTES == 0) request_refresh();
+  int interval = s_state.settings.refresh_minutes ? s_state.settings.refresh_minutes : 30;
+  if ((tick_time->tm_hour * 60 + tick_time->tm_min) % interval == 0) request_refresh();
   redraw();
 }
 
@@ -215,6 +215,10 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
   }
   if ((t = dict_find(it, MESSAGE_KEY_HAND_REACH))) {
     s_state.settings.hand_stretch = t->value->int32 != 0;
+    settings_changed = true;
+  }
+  if ((t = dict_find(it, MESSAGE_KEY_REFRESH_MINUTES))) {
+    s_state.settings.refresh_minutes = t->value->int32;
     settings_changed = true;
   }
   if (settings_changed) persist_write_data(SETTINGS_KEY, &s_state.settings, sizeof(Settings));
