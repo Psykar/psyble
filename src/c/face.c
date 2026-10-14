@@ -11,8 +11,8 @@
 
 #define DESIGN_R 130.f
 // Insets of the line from now to the next event.
-#define SWEEP_OUTER PBL_IF_ROUND_ELSE(5.25f, 7.65f)
-#define SWEEP_INNER PBL_IF_ROUND_ELSE(6.25f, 8.65f)
+#define SWEEP_OUTER PBL_IF_ROUND_ELSE(4.75f, 7.65f)
+#define SWEEP_INNER PBL_IF_ROUND_ELSE(6.75f, 8.65f)
 // Barlow Condensed: cap height 0.70em; with CSS line-height 1 the baseline sits 0.90em below the box top.
 #define CAP_EM 0.70f
 #define BASELINE_EM 0.90f
