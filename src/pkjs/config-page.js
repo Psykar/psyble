@@ -9,15 +9,21 @@ module.exports = function () {
     var canvas = document.getElementById('psyble-preview');
     if (!canvas) return;
     var info = clay.meta && clay.meta.activeWatchInfo;
-    var round = !!(info && /chalk|gabbro/.test(info.platform));
+    var platform = (info && info.platform) || 'basalt';
+    var round = /chalk|gabbro/.test(platform);
     var W = round ? 260 : 144, H = round ? 260 : 168, cx = W / 2, cy = H / 2;
-    var css = round ? 208 : 216, scale = css / W, dpr = window.devicePixelRatio || 1;
-    canvas.width = css * dpr;
-    canvas.height = H * scale * dpr;
-    canvas.style.width = css + 'px';
-    canvas.style.height = H * scale + 'px';
+    // Drawn at the watch's own resolution, then enlarged by a whole number of device pixels
+    // without smoothing, so it shows the watch's pixels rather than a crisper ideal.
+    var px = { chalk: [180, 180], gabbro: [260, 260], emery: [200, 228] }[platform] || [144, 168];
+    var k = Math.min(px[0] / W, px[1] / H), dpr = window.devicePixelRatio || 1;
+    var zoom = Math.max(1, Math.floor(220 * dpr / px[0]));
+    canvas.width = px[0];
+    canvas.height = px[1];
+    canvas.style.width = px[0] * zoom / dpr + 'px';
+    canvas.style.height = px[1] * zoom / dpr + 'px';
+    canvas.style.imageRendering = 'pixelated';
     var g = canvas.getContext('2d');
-    g.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+    g.setTransform(k, 0, 0, k, (px[0] - W * k) / 2, (px[1] - H * k) / 2);
 
     function val(key, dflt) {
       var item = clay.getItemByMessageKey(key);
