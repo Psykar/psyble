@@ -23,6 +23,10 @@ module.exports = [
     items: [
       { type: 'heading', defaultValue: 'Look' },
       {
+        type: 'text',
+        defaultValue: '<div style="text-align:center"><canvas id="psyble-preview"></canvas></div>'
+      },
+      {
         type: 'color',
         messageKey: 'DIAL',
         label: 'Dial',
