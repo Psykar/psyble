@@ -84,6 +84,7 @@ changing a font, size or character set:
 
 ```sh
 uv run --no-project --with freetype-py python tools/gen_aafonts.py
+python3 tools/gen_preview_fonts.py   # the settings page's preview draws with the same glyphs
 ```
 
 Black-and-white watches use the TTF fonts through the SDK's renderer. Barlow is under the SIL

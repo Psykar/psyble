@@ -3,7 +3,10 @@ var clayConfig = require('./config');
 var calendar = require('./calendar');
 var sun = require('./sun');
 
-var clay = new Clay(clayConfig, require('./config-page'), { autoHandleEvents: false });
+var clay = new Clay(clayConfig, require('./config-page'), {
+  autoHandleEvents: false,
+  userData: { fonts: require('./preview-fonts') }
+});
 
 // Must match MAX_EVENTS and TITLE_LEN in src/c/state.h.
 var MAX_EVENTS = 8;
